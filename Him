@@ -279,11 +279,16 @@ bondLabel.TextYAlignment = Enum.TextYAlignment.Center
 -- 🔁 Bond, Auto Farm, MaximGun, Train
 -- ==========================
 if not game:IsLoaded() then game.Loaded:Wait() end
+
+local player = game:GetService("Players").LocalPlayer
+
 repeat task.wait() until player.Character and player.PlayerGui:FindFirstChild("LoadingScreenPrefab") == nil
 
 game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("EndDecision"):FireServer(false)
 
 _G.Bond = 0
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 workspace.RuntimeItems.ChildAdded:Connect(function(v)
     if v.Name:find("Bond") and v:FindFirstChild("Part") then
         v.Destroying:Connect(function()
@@ -292,6 +297,7 @@ workspace.RuntimeItems.ChildAdded:Connect(function(v)
     end
 end)
 
+-- UI bondLabel phải được tạo sẵn ở chỗ khác hoặc thêm vào gui
 spawn(function()
     while bondLabel do
         bondLabel.Text = "Bond (+" .. tostring(_G.Bond) .. ")"
@@ -360,22 +366,25 @@ end
 
 wait(0.9)
 while true do
-    if player.Character.Humanoid.Sit then
+    if player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Sit then
         local TpEnd = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(30, Enum.EasingStyle.Quad), {CFrame = CFrame.new(0.5, -78, -49429)})
         TpEnd:Play()
+
         local bv = Instance.new("BodyVelocity")
         bv.Name = "VelocityHandler"
         bv.Parent = player.Character.HumanoidRootPart
         bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
         bv.Velocity = Vector3.new(0, 0, 0)
+
         repeat wait() until workspace.RuntimeItems:FindFirstChild("Bond")
         TpEnd:Cancel()
+
         for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
             if v.Name:find("Bond") and v:FindFirstChild("Part") then
                 repeat task.wait()
-                    if v:FindFirstChild("Part") then
+                    if v and v:FindFirstChild("Part") then
                         player.Character.HumanoidRootPart.CFrame = v.Part.CFrame
-                        game:GetService("ReplicatedStorage").Shared.Network.RemotePromise.Remotes.C_ActivateObject:FireServer(v)
+                        ReplicatedStorage.Shared.Network.RemotePromise.Remotes.C_ActivateObject:FireServer(v)
                     end
                 until not v:FindFirstChild("Part")
             end
