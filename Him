@@ -280,16 +280,28 @@ bondLabel.TextYAlignment = Enum.TextYAlignment.Center
 -- ==========================
 if not game:IsLoaded() then game.Loaded:Wait() end
 
-local player = game:GetService("Players").LocalPlayer
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local player = Players.LocalPlayer
 
+-- Chờ nhân vật load và UI biến mất
 repeat task.wait() until player.Character and player.PlayerGui:FindFirstChild("LoadingScreenPrefab") == nil
 
-game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("EndDecision"):FireServer(false)
+-- Hàm chờ nhân vật mới khi respawn
+local function waitForCharacter()
+    repeat task.wait() until player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    return player.Character
+end
 
+-- Gọi lại play again
+ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("EndDecision"):FireServer(false)
+
+-- Biến theo dõi Bond
 _G.Bond = 0
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-workspace.RuntimeItems.ChildAdded:Connect(function(v)
+-- Theo dõi Bond mới sinh
+workspace:WaitForChild("RuntimeItems").ChildAdded:Connect(function(v)
     if v.Name:find("Bond") and v:FindFirstChild("Part") then
         v.Destroying:Connect(function()
             _G.Bond += 1
@@ -297,7 +309,7 @@ workspace.RuntimeItems.ChildAdded:Connect(function(v)
     end
 end)
 
--- UI bondLabel phải được tạo sẵn ở chỗ khác hoặc thêm vào gui
+-- Cập nhật UI
 spawn(function()
     while bondLabel do
         bondLabel.Text = "Bond (+" .. tostring(_G.Bond) .. ")"
@@ -305,90 +317,104 @@ spawn(function()
     end
 end)
 
+-- Đảm bảo camera
 player.CameraMode = "Classic"
 player.CameraMaxZoomDistance = math.huge
 player.CameraMinZoomDistance = 30
-player.Character.HumanoidRootPart.Anchored = true
-wait(0.3)
 
-repeat task.wait()
-    player.Character.HumanoidRootPart.Anchored = true
-    player.Character.HumanoidRootPart.CFrame = CFrame.new(80, 3, -9000)
-until workspace.RuntimeItems:FindFirstChild("MaximGun")
+-- Teleport xuống dưới map + chờ MaximGun
+local char = waitForCharacter()
+local hrp = char:WaitForChild("HumanoidRootPart")
+hrp.Anchored = true
+hrp.CFrame = CFrame.new(80, 3, -9000)
 
-task.wait(0.3)
+repeat task.wait() until workspace.RuntimeItems:FindFirstChild("MaximGun")
+
+-- Ngồi vào MaximGun
 for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
     if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") then
-        v.VehicleSeat.Disabled = false
-        v.VehicleSeat:SetAttribute("Disabled", false)
-        v.VehicleSeat:Sit(player.Character:FindFirstChild("Humanoid"))
+        local seat = v.VehicleSeat
+        seat.Disabled = false
+        seat:SetAttribute("Disabled", false)
+        seat:Sit(char:FindFirstChild("Humanoid"))
     end
 end
 
+-- Teleport lại gần để chắc chắn
 task.wait(0.5)
 for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
-    if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 250 then
-        player.Character.HumanoidRootPart.CFrame = v.VehicleSeat.CFrame
+    if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (hrp.Position - v.VehicleSeat.Position).Magnitude < 250 then
+        hrp.CFrame = v.VehicleSeat.CFrame
     end
 end
 
-wait(1)
-player.Character.HumanoidRootPart.Anchored = false
-repeat wait() until player.Character.Humanoid.Sit == true
-wait(0.5)
-player.Character.Humanoid.Sit = false
-wait(0.5)
+-- Chuẩn bị bay lên
+task.wait(1)
+hrp.Anchored = false
+repeat wait() until char.Humanoid.Sit == true
+task.wait(0.5)
+char.Humanoid.Sit = false
+task.wait(0.5)
 
+-- Teleport lại cho chắc chắn ngồi
 repeat task.wait()
     for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
-        if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 250 then
-            player.Character.HumanoidRootPart.CFrame = v.VehicleSeat.CFrame
+        if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (hrp.Position - v.VehicleSeat.Position).Magnitude < 250 then
+            hrp.CFrame = v.VehicleSeat.CFrame
         end
     end
-until player.Character.Humanoid.Sit == true
+until char.Humanoid.Sit == true
 
-wait(0.9)
+-- Bay đến Conductor
+task.wait(0.9)
 for _, v in pairs(workspace:GetChildren()) do
-    if v:IsA("Model") and v:FindFirstChild("RequiredComponents") and v.RequiredComponents:FindFirstChild("Controls") and v.RequiredComponents.Controls:FindFirstChild("ConductorSeat") then
-        local seat = v.RequiredComponents.Controls.ConductorSeat:FindFirstChild("VehicleSeat")
+    if v:IsA("Model") and v:FindFirstChild("RequiredComponents") then
+        local seat = v.RequiredComponents:FindFirstChild("Controls") and v.RequiredComponents.Controls:FindFirstChild("ConductorSeat") and v.RequiredComponents.Controls.ConductorSeat:FindFirstChild("VehicleSeat")
         if seat then
-            local TpTrain = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(35, Enum.EasingStyle.Quad), {CFrame = seat.CFrame * CFrame.new(0, 20, 0)})
-            TpTrain:Play()
+            local tween = TweenService:Create(hrp, TweenInfo.new(35, Enum.EasingStyle.Quad), {CFrame = seat.CFrame * CFrame.new(0, 20, 0)})
+            tween:Play()
             local bv = Instance.new("BodyVelocity")
             bv.Name = "VelocityHandler"
-            bv.Parent = player.Character.HumanoidRootPart
             bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
             bv.Velocity = Vector3.new(0, 0, 0)
-            TpTrain.Completed:Wait()
+            bv.Parent = hrp
+            tween.Completed:Wait()
+            bv:Destroy()
         end
     end
 end
 
-wait(0.9)
+-- Lặp auto farm Bond
+task.wait(0.9)
 while true do
-    if player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Sit then
-        local TpEnd = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(30, Enum.EasingStyle.Quad), {CFrame = CFrame.new(0.5, -78, -49429)})
-        TpEnd:Play()
+    if char and char:FindFirstChild("Humanoid") and char.Humanoid.Sit then
+        -- Teleport vào khu farm
+        local tp = TweenService:Create(hrp, TweenInfo.new(30, Enum.EasingStyle.Quad), {CFrame = CFrame.new(0.5, -78, -49429)})
+        tp:Play()
 
         local bv = Instance.new("BodyVelocity")
         bv.Name = "VelocityHandler"
-        bv.Parent = player.Character.HumanoidRootPart
         bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
         bv.Velocity = Vector3.new(0, 0, 0)
+        bv.Parent = hrp
 
+        -- Đợi bond xuất hiện
         repeat wait() until workspace.RuntimeItems:FindFirstChild("Bond")
-        TpEnd:Cancel()
+        tp:Cancel()
+        bv:Destroy()
 
-        for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
-            if v.Name:find("Bond") and v:FindFirstChild("Part") then
+        -- Nhặt từng bond
+        for _, bond in pairs(workspace.RuntimeItems:GetChildren()) do
+            if bond.Name:find("Bond") and bond:FindFirstChild("Part") then
                 repeat task.wait()
-                    if v and v:FindFirstChild("Part") then
-                        player.Character.HumanoidRootPart.CFrame = v.Part.CFrame
-                        ReplicatedStorage.Shared.Network.RemotePromise.Remotes.C_ActivateObject:FireServer(v)
+                    if bond and bond:FindFirstChild("Part") then
+                        hrp.CFrame = bond.Part.CFrame
+                        ReplicatedStorage.Shared.Network.RemotePromise.Remotes.C_ActivateObject:FireServer(bond)
                     end
-                until not v:FindFirstChild("Part")
+                until not bond:FindFirstChild("Part")
             end
         end
     end
-    task.wait()
+    task.wait(1)
 end
+
