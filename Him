@@ -60,70 +60,6 @@ end)
 -- ==========================
 -- 🚂 TELEPORT + CREATE PARTY (THEO CONFIG)
 -- ==========================
-
-if not getgenv().EnableTeleport then return end
-repeat task.wait() until game:IsLoaded()-- ==========================
--- ⚙️ BOOST SERVER + LOCK FPS
--- ==========================
-local cfg = getgenv().Settings
-
--- 🔒 Lock FPS thủ công
-if cfg["Lock FPS"] and cfg["Lock FPS"]["Enabled"] then
-    setfpscap(cfg["Lock FPS"]["FPS"])
-end
-
--- ⚙️ Boost Server Script
-local function optimizeGame()
-    if not cfg["Boost Server"] then return end
-
-    -- 🧹 Xoá object theo tên
-    if cfg["Object Removal"] and cfg["Object Removal"]["Enabled"] then
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            for _, name in ipairs(cfg["Object Removal"]["Targets"]) do
-                if string.find(obj.Name:lower(), name:lower()) then
-                    pcall(function() obj:Destroy() end)
-                end
-            end
-        end
-    end
-
-    -- 💨 Xoá hiệu ứng
-    if cfg["Remove Effects"] then
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
-                pcall(function() v:Destroy() end)
-            end
-        end
-    end
-
-    -- 🔇 Xoá âm thanh
-    if cfg["Remove Sounds"] then
-        for _, sound in ipairs(workspace:GetDescendants()) do
-            if sound:IsA("Sound") and sound.Looped then
-                pcall(function() sound:Stop(); sound:Destroy() end)
-            end
-        end
-    end
-
-    -- 🌙 Tối giản ánh sáng
-    if cfg["Simplify Lighting"] then
-        local lighting = game:GetService("Lighting")
-        lighting.FogEnd = 1000000
-        lighting.Brightness = 0
-        lighting.GlobalShadows = false
-    end
-end
-
-spawn(function()
-    while true do
-        optimizeGame()
-        task.wait(5)
-    end
-end)
-
--- ==========================
--- 🚂 TELEPORT + CREATE PARTY
--- ==========================
 if not getgenv().EnableTeleport then return end
 repeat task.wait() until game:IsLoaded()
 
@@ -227,6 +163,7 @@ task.spawn(function()
         task.wait(getgenv().TeleportInterval or 5)
     end
 end)
+
 -- ==========================
 -- 🧩 UI Mochi Hub
 -- có thể tự xóa ui
@@ -418,3 +355,34 @@ while true do
     task.wait(1)
 end
 
+-- ==========================
+-- auto Rejoin tránh lỗi
+-- ==========================
+if not getgenv().AutoRejoinConfig or not getgenv().AutoRejoinConfig["Enabled"] then return end
+
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local LocalPlayer = Players.LocalPlayer
+local placeId = game.PlaceId
+
+-- chỉnh ở ngoài config
+local minutes = tonumber(getgenv().AutoRejoinConfig["RejoinDelay"]) or 60
+minutes = math.clamp(minutes, 1, 9999)
+
+local totalSeconds = minutes * 60
+local startTime = os.time()
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+        local elapsed = os.time() - startTime
+        if elapsed >= totalSeconds then
+            pcall(function()
+                LocalPlayer:Kick("Auto Rejoin sau " .. minutes .. " phút.")
+            end)
+            task.wait(3)
+            TeleportService:Teleport(placeId, LocalPlayer)
+            break
+        end
+    end
+end)
