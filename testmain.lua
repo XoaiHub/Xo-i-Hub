@@ -58,6 +58,38 @@ spawn(function()
 end)
 
 -- ==========================
+-- auto Rejoin tránh lỗi
+-- ==========================
+if not getgenv().AutoRejoinConfig or not getgenv().AutoRejoinConfig["Enabled"] then return end
+
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local LocalPlayer = Players.LocalPlayer
+local placeId = game.PlaceId
+
+-- chỉnh ở ngoài config
+local minutes = tonumber(getgenv().AutoRejoinConfig["RejoinDelay"]) or 60
+minutes = math.clamp(minutes, 1, 9999)
+
+local totalSeconds = minutes * 60
+local startTime = os.time()
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+        local elapsed = os.time() - startTime
+        if elapsed >= totalSeconds then
+            pcall(function()
+                LocalPlayer:Kick("Auto Rejoin sau " .. minutes .. " phút.")
+            end)
+            task.wait(3)
+            TeleportService:Teleport(placeId, LocalPlayer)
+            break
+        end
+    end
+end)
+
+-- ==========================
 -- 🚂 TELEPORT + CREATE PARTY (THEO CONFIG)
 -- ==========================
 if not getgenv().EnableTeleport then return end
