@@ -110,17 +110,22 @@ local function teleportTo(zoneName)
     end
 end
 
--- Create Party
+-- Tạo Party (maxMembers lấy từ config tương ứng zone)
 local function createParty(mode)
+    local maxMembers = getgenv().TargetPlayersPerZone[currentZone] or 1
+    maxMembers = math.clamp(maxMembers, 1, 4) -- Giới hạn 1–4 người
+
     local args = {{
         isPrivate = true,
-        maxMembers = 1,
+        maxMembers = maxMembers,
         trainId = "default",
         gameMode = mode
     }}
+
     ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Network")
         :WaitForChild("RemoteEvent"):WaitForChild("CreateParty"):FireServer(unpack(args))
-    print("[🎉 Đã tạo Party]:", mode)
+
+    print(string.format("[🎉 Tạo Party: %s] | Số người: %d", mode, maxMembers))
 end
 
 -- Main loop
@@ -144,7 +149,6 @@ task.spawn(function()
                         teleportTo(zoneName)
                     end
 
-                    -- Đợi ổn định rồi tạo party
                     task.wait(1)
 
                     if currentZone == zoneName and not partyCreated then
