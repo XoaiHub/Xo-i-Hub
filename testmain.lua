@@ -106,7 +106,7 @@ local function teleportTo(zoneName)
         hrp.CFrame = CFrame.new(hitbox.Position + Vector3.new(0, getgenv().YOffset or 5, 0))
         currentZone = zoneName
         partyCreated = false
-        print("[✅ Teleport đến]:", zoneName)
+        print("[✅ Đã teleport đến]:", zoneName)
     end
 end
 
@@ -132,32 +132,40 @@ task.spawn(function()
     table.sort(zoneList)
 
     while getgenv().EnableTeleport do
-        if not partyCreated then
-            for _, zoneName in ipairs(zoneList) do
-                local target = getgenv().TargetPlayersPerZone[zoneName]
-                local current = getPlayerCountInZone(zoneName)
+        local teleported = false
 
-                print(string.format("🔍 [%s]: %d/%d", zoneName, current, target))
+        for _, zoneName in ipairs(zoneList) do
+            local target = getgenv().TargetPlayersPerZone[zoneName]
+            local current = getPlayerCountInZone(zoneName)
 
-                if current < target then
-                    if currentZone ~= zoneName then
-                        teleportTo(zoneName)
-                    end
+            print(string.format("🔍 [%s]: %d/%d", zoneName, current, target))
 
-                    -- Đợi ổn định rồi tạo party
-                    task.wait(1)
-
-                    if currentZone == zoneName and not partyCreated then
-                        if getgenv().EnableParty then
-                            if getgenv().EnableParty["Normal"] then createParty("Normal") end
-                            if getgenv().EnableParty["ScorchedEarth"] then createParty("Scorched Earth") end
-                            if getgenv().EnableParty["Nightmare"] then createParty("Nightmare") end
-                        end
-                        partyCreated = true
-                    end
-                    break
+            if current < target then
+                if currentZone ~= zoneName then
+                    teleportTo(zoneName)
                 end
+
+                teleported = true
+
+                -- Đợi ổn định rồi tạo party
+                task.wait(1)
+
+                if currentZone == zoneName and not partyCreated then
+                    local partyModes = getgenv().EnableParty
+                    if partyModes then
+                        if partyModes["Normal"] then createParty("Normal") end
+                        if partyModes["ScorchedEarth"] then createParty("Scorched Earth") end
+                        if partyModes["Nightmare"] then createParty("Nightmare") end
+                    end
+                    partyCreated = true
+                end
+                break
             end
+        end
+
+        if not teleported then
+            currentZone = nil
+            print("⚠️ Không tìm được zone phù hợp, thử lại sau...")
         end
 
         task.wait(getgenv().TeleportInterval or 5)
@@ -282,7 +290,7 @@ TpTrain.Completed:Wait()
 end
 end
 end
-wait(1)
+wait(0.9)
 while true do
 if game.Players.LocalPlayer.Character:FindFirstChild("Humanoid").Sit == true then
 TpEnd = game:GetService("TweenService"):Create(game.Players.LocalPlayer.Character.HumanoidRootPart, TweenInfo.new(17, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {CFrame = CFrame.new(0.5, -78, -49429)})
