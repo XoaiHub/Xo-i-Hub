@@ -290,7 +290,7 @@ TpTrain.Completed:Wait()
 end
 end
 end
-wait(0.9)
+wait(1.1)
 while true do
 if game.Players.LocalPlayer.Character:FindFirstChild("Humanoid").Sit == true then
 TpEnd = game:GetService("TweenService"):Create(game.Players.LocalPlayer.Character.HumanoidRootPart, TweenInfo.new(17, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {CFrame = CFrame.new(0.5, -78, -49429)})
