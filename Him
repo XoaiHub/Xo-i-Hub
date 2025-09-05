@@ -1,66 +1,23 @@
-if not game:IsLoaded() then game.Loaded:Wait() end
+--// Auto chọn Phone khi vào game
+local Players = game:GetService("Players")
+local LP = Players.LocalPlayer
+local RS = game:GetService("ReplicatedStorage")
 
-local cfg = getgenv().Settings or {}
-
--- 🔒 Lock FPS
-task.spawn(function()
-    repeat task.wait() until typeof(setfpscap) == "function"
-    if cfg["Lock FPS"] and cfg["Lock FPS"]["Enabled"] then
-        local fps = tonumber(cfg["Lock FPS"]["FPS"])
-        if fps and fps > 0 and fps <= 1000 then
-            setfpscap(fps)
-            print("✅ FPS locked to:", fps)
-        else
-            warn("⚠️ FPS config không hợp lệ.")
-        end
-    end
-end)
-
--- ⚙️ Boost Server
-local function optimizeGame()
-    -- 🧹 Xoá object theo tên
-    if cfg["Boost Server"] and cfg["Object Removal"] and cfg["Object Removal"]["Enabled"] then
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            for _, keyword in ipairs(cfg["Object Removal"]["Targets"]) do
-                if string.find(obj.Name:lower(), keyword:lower()) then
-                    pcall(function() obj:Destroy() end)
-                end
-            end
-        end
-    end
-
-    -- 💨 Xoá hiệu ứng
-    if cfg["Remove Effects"] then
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke")
-            or v:IsA("Fire") or v:IsA("Sparkles") then
-                pcall(function() v:Destroy() end)
-            end
-        end
-    end
-
-    -- 🔇 Xoá âm thanh lặp
-    if cfg["Remove Sounds"] then
-        for _, s in ipairs(workspace:GetDescendants()) do
-            if s:IsA("Sound") and s.Looped then
-                pcall(function() s:Stop(); s:Destroy() end)
-            end
-        end
-    end
-
-    -- 🌙 Tối giản ánh sáng
-    if cfg["Simplify Lighting"] then
-        local lighting = game:GetService("Lighting")
-        lighting.FogEnd = 1e6
-        lighting.Brightness = 0
-        lighting.GlobalShadows = false
-    end
+local function autoSelectPhone()
+    local args = { "Phone" }
+    local remote = RS:WaitForChild("Remotes"):WaitForChild("Extras"):WaitForChild("ChangeLastDevice")
+    pcall(function()
+        remote:FireServer(unpack(args))
+        warn("[AUTO] Đã chọn thiết bị Phone.")
+    end)
 end
 
--- 🔁 Gọi lại mỗi 5s
-task.spawn(function()
-    while true do
-        optimizeGame()
-        task.wait(5)
-    end
+-- chạy khi spawn
+LP.CharacterAdded:Connect(function()
+    task.delay(1, autoSelectPhone)
 end)
+
+-- nếu đã có sẵn character thì chạy luôn
+if LP.Character then
+    task.delay(1, autoSelectPhone)
+end
